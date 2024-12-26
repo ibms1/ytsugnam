@@ -2,7 +2,7 @@ import os
 import streamlit as st
 from googleapiclient.discovery import build
 from dotenv import load_dotenv
-import requests
+import google.generativeai as genai
 
 # Load environment variables locally
 load_dotenv()
@@ -14,6 +14,9 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or st.secrets["GEMINI_API_KEY"]
 # Initialize YouTube API
 youtube = build("youtube", "v3", developerKey=YOUTUBE_API_KEY)
 
+# Configure Gemini
+genai.configure(api_key=GEMINI_API_KEY)
+
 def search_channels(niche):
     """
     Search for channels on YouTube related to the given niche.
@@ -24,7 +27,7 @@ def search_channels(niche):
         part="snippet",
         maxResults=5
     ).execute()
-
+    
     channels = []
     for item in search_response["items"]:
         channel_id = item["id"]["channelId"]
@@ -45,51 +48,50 @@ def suggest_channel_names_gemini(channels, niche):
     Suggest new competitive channel names using Google Gemini API.
     """
     prompt = f"""
-    You are an AI expert in YouTube channel strategy. Based on the following niche "{niche}" and these existing channels:
+    You are an AI expert in YouTube channel strategy. Based on the following niche "{niche}" 
+    and these existing channels:
     
     {channels}
     
-    Suggest creative, catchy, and competitive new YouTube channel names:
+    Suggest 5 creative, catchy, and competitive new YouTube channel names. 
+    Format the response as a numbered list with a brief explanation for each suggestion.
     """
-    url = "https://gemini.googleapis.com/v1/generateText"
-    headers = {
-        "Authorization": f"Bearer {GEMINI_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    data = {
-        "prompt": prompt,
-        "maxTokens": 100,
-        "temperature": 0.7
-    }
-    response = requests.post(url, json=data, headers=headers)
-    if response.status_code == 200:
-        result = response.json()
-        return result["text"]
-    else:
-        raise Exception(f"Gemini API error: {response.text}")
+    
+    # Initialize Gemini model
+    model = genai.GenerativeModel('gemini-pro')
+    
+    try:
+        response = model.generate_content(prompt)
+        return response.text
+    except Exception as e:
+        raise Exception(f"Gemini API error: {str(e)}")
 
 # Streamlit interface
 st.title("YouTube Channel Name Suggestions")
-st.markdown("### Enter your niche to get creative channel name ideas")
+st.markdown("Enter your niche to get creative channel name ideas")
 
 # Input niche
-niche = st.text_input("Enter your niche (e.g., cooking, technology):", "")
+niche = st.text_input("Enter your niche (e.g., coding, technology):", "")
 
 if st.button("Get Suggestions"):
     if niche:
-        st.write("Fetching and analyzing data...")
         try:
-            # Fetch channels from YouTube
-            channels = search_channels(niche)
-            st.write("Found the following channels:")
-            for i, channel in enumerate(channels, start=1):
-                st.write(f"{i}. {channel['name']} - Subscribers: {channel['subscribers']}, Views: {channel['views']}")
-            
-            # Suggest new names using Gemini
-            suggestions = suggest_channel_names_gemini(channels, niche)
-            st.markdown("### Suggested Names:")
-            st.write(suggestions)
+            with st.spinner("Fetching and analyzing data..."):
+                # Fetch channels from YouTube
+                channels = search_channels(niche)
+                
+                st.subheader("Current Popular Channels")
+                for i, channel in enumerate(channels, start=1):
+                    st.write(f"{i}. {channel['name']}")
+                    st.write(f"   • Subscribers: {channel['subscribers']:,}")
+                    st.write(f"   • Views: {channel['views']:,}")
+                
+                # Suggest new names using Gemini
+                suggestions = suggest_channel_names_gemini(channels, niche)
+                st.subheader("Suggested Channel Names")
+                st.write(suggestions)
+                
         except Exception as e:
-            st.error(f"An error occurred: {e}")
+            st.error(f"An error occurred: {str(e)}")
     else:
         st.warning("Please enter a niche!")

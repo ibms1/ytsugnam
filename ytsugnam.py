@@ -17,7 +17,7 @@ genai.configure(api_key=GEMINI_API_KEY)
 
 # Set page configuration
 st.set_page_config(
-    page_title="YouTube Channel Name Generator",
+    page_title="AI YouTube Channel Name Generator",
     page_icon="🎥",
     layout="wide"
 )
@@ -29,24 +29,33 @@ st.markdown("""
         padding: 2rem;
     }
     .stButton button {
-        width: 100%;
         background-color: #ff0000;
         color: white;
         font-weight: bold;
+        padding: 0.5rem 2rem;
+        min-width: 200px;
     }
     .metric-card {
         background-color: #f0f2f6;
         padding: 1rem;
         border-radius: 10px;
         box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+        margin-bottom: 1rem;
+        height: 100%;
     }
     .suggestion-card {
         background-color: white;
         padding: 1.5rem;
         border-radius: 10px;
         border-left: 5px solid #ff0000;
-        margin: 1rem 0;
+        margin-bottom: 1rem;
+        height: 100%;
         box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+    }
+    .center-content {
+        display: flex;
+        justify-content: center;
+        margin: 2rem 0;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -81,7 +90,7 @@ def search_channels(niche):
     return channels
 
 def suggest_channel_names_gemini(channels, niche):
-    """Generate channel name suggestions using Gemini."""
+    """Generate channel name suggestions using AI."""
     prompt = f"""
     As a YouTube branding expert, analyze these top {niche} channels:
     {channels}
@@ -107,80 +116,78 @@ def suggest_channel_names_gemini(channels, niche):
         raise Exception(f"❌ Oops! Something went wrong,tTry Again in Few Moment")
 
 # Main UI
-st.title("🎥 AI YouTube Channel Name Generator")
+st.title("🎥 YouTube Channel Name Generator")
 st.markdown("### Transform your content idea into a standout channel name")
 
-# Two-column layout for input
-col1, col2 = st.columns([2, 1])
-
-with col1:
-    niche = st.text_input(
-        "What's your content niche?",
-        placeholder="e.g., Python Programming, Cooking, Travel",
-        help="Enter the main topic or theme of your YouTube channel"
-    )
-
-with col2:
-    st.write("")
-    st.write("")
-    if st.button("✨ Generate Ideas", use_container_width=True):
-        if niche:
-            try:
-                with st.spinner("🔍 Analyzing top channels in your niche..."):
-                    channels = search_channels(niche)
-                    
-                    # Display current channels in cards
-                    st.markdown("### 📊 Top Channels in Your Niche")
-                    for i, channel in enumerate(channels, 1):
-                        with st.container():
-                            st.markdown(f"""
-                            <div class="metric-card">
-                                <h4>{channel['name']}</h4>
-                                <p><small>{channel['description']}</small></p>
-                                <table>
-                                    <tr>
-                                        <td>👥 {channel['subscribers']:,} subscribers</td>
-                                        <td>👀 {channel['views']:,} views</td>
-                                        <td>🎥 {channel['videos']:,} videos</td>
-                                    </tr>
-                                </table>
-                            </div>
-                            """, unsafe_allow_html=True)
-                    
-                    # Generate and display suggestions
-                    with st.spinner("🎯 Generating creative channel names..."):
+# Centered input container
+container = st.container()
+with container:
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        niche = st.text_input(
+            "What's your content niche?",
+            placeholder="e.g.,Cooking, Travel",
+            help="Enter the main topic or theme of your YouTube channel"
+        )
+        st.write("")  # Add some spacing
+        if st.button("✨ Generate Ideas", use_container_width=True):
+            if niche:
+                try:
+                    with st.spinner("🔍 Analyzing top channels in your niche..."):
+                        channels = search_channels(niche)
                         suggestions = suggest_channel_names_gemini(channels, niche)
                         
-                        st.markdown("### ✨ Suggested Channel Names")
-                        st.markdown(f"""
-                        <div class="suggestion-card">
-                            {suggestions}
-                        </div>
-                        """, unsafe_allow_html=True)
+                        # Create two columns for results
+                        col_left, col_right = st.columns(2)
                         
-                        # Tips section
-                        with st.expander("📌 Tips for choosing your channel name"):
-                            st.markdown("""
-                            - Keep it memorable and easy to spell
-                            - Avoid special characters or numbers if possible
-                            - Check if the name is available across social media
-                            - Consider your long-term content strategy
-                            - Test the name with potential viewers
-                            """)
-            
-            except Exception as e:
-                st.error(f"❌ Oops! Something went wrong,tTry Again in Few Moment")
-        else:
-            st.warning("🎯 Please enter your content niche to get started!")
+                        # Left column: Top Channels
+                        with col_left:
+                            st.markdown("### 📊 Top Channels in Your Niche")
+                            for channel in channels:
+                                st.markdown(f"""
+                                <div class="metric-card">
+                                    <h4>{channel['name']}</h4>
+                                    <p><small>{channel['description']}</small></p>
+                                    <table>
+                                        <tr>
+                                            <td>👥 {channel['subscribers']:,} subscribers</td>
+                                            <td>👀 {channel['views']:,} views</td>
+                                            <td>🎥 {channel['videos']:,} videos</td>
+                                        </tr>
+                                    </table>
+                                </div>
+                                """, unsafe_allow_html=True)
+                        
+                        # Right column: Suggestions
+                        with col_right:
+                            st.markdown("### ✨ Suggested Channel Names")
+                            st.markdown(f"""
+                            <div class="suggestion-card">
+                                {suggestions}
+                            </div>
+                            """, unsafe_allow_html=True)
+                
+                except Exception as e:
+                    st.error(f"❌ Oops! Something went wrong,tTry Again in Few Moment")
+            else:
+                st.warning("🎯 Please enter your content niche to get started!")
+
+# Tips section at the bottom
+with st.expander("📌 Tips for choosing your channel name"):
+    st.markdown("""
+    - Keep it memorable and easy to spell
+    - Avoid special characters or numbers if possible
+    - Check if the name is available across social media
+    - Consider your long-term content strategy
+    - Test the name with potential viewers
+    """)
 
 # Footer
 st.markdown("---")
 st.markdown(
-    "Made with ❤️ for content creators  ",
+    "Made with ❤️ for content creators",
     unsafe_allow_html=True
 )
-
-
 
 
 

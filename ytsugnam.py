@@ -1,19 +1,5 @@
-import os
 import streamlit as st
-from googleapiclient.discovery import build
-from dotenv import load_dotenv
-import google.generativeai as genai
-
-# Load environment variables
-load_dotenv()
-
-# Configure API keys
-YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY") or st.secrets["YOUTUBE_API_KEY"]
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or st.secrets["GEMINI_API_KEY"]
-
-# Initialize APIs
-youtube = build("youtube", "v3", developerKey=YOUTUBE_API_KEY)
-genai.configure(api_key=GEMINI_API_KEY)
+import random
 
 # Set page configuration
 st.set_page_config(
@@ -35,14 +21,6 @@ st.markdown("""
         padding: 0.5rem 2rem;
         min-width: 200px;
     }
-    .metric-card {
-        background-color: #f0f2f6;
-        padding: 1rem;
-        border-radius: 10px;
-        box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
-        margin-bottom: 1rem;
-        height: 100%;
-    }
     .suggestion-card {
         background-color: white;
         padding: 1.5rem;
@@ -60,60 +38,102 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-def search_channels(niche):
-    """Search for YouTube channels in the given niche."""
-    search_response = youtube.search().list(
-        q=niche,
-        type="channel",
-        part="snippet",
-        maxResults=5
-    ).execute()
+def generate_channel_names(niche):
+    """Generate channel name suggestions based on predefined patterns and the given niche."""
     
-    channels = []
-    for item in search_response["items"]:
-        channel_id = item["id"]["channelId"]
-        channel_data = youtube.channels().list(
-            part="statistics,snippet",
-            id=channel_id
-        ).execute()
+    # Enhanced word lists for more variety
+    prefixes = [
+        "The", "Pro", "Best", "Top", "Epic", "Amazing", "Creative", "Daily", 
+        "Smart", "Expert", "Elite", "Premium", "Ultimate", "Super", "Master"
+    ]
+    
+    suffixes = [
+        "Hub", "Pro", "Master", "Guide", "Tips", "Zone", "World", "Space", 
+        "Lab", "Studio", "Central", "HQ", "Academy", "Nation", "Sphere"
+    ]
+    
+    # Enhanced niche-specific dictionaries
+    niche_specific = {
+        "cooking": [
+            "Chef", "Kitchen", "Recipe", "Food", "Cuisine", "Tasty", "Delicious", 
+            "Flavor", "Gourmet", "Cooking", "Culinary", "Foodie", "Dishes", "Bites"
+        ],
+        "gaming": [
+            "Gamer", "Gaming", "Play", "Stream", "Level", "Quest", "Achievement", 
+            "Player", "Score", "League", "Console", "Arcade", "Champion", "Guild"
+        ],
+        "travel": [
+            "Traveler", "Adventure", "Journey", "Explore", "Wanderlust", "Discovery", 
+            "Globe", "Trip", "Voyage", "Tour", "Nomad", "Explorer", "Passport"
+        ],
+        "tech": [
+            "Tech", "Digital", "Gadget", "Innovation", "Code", "Hack", "System", 
+            "Device", "Program", "Binary", "Cyber", "Future", "Smart", "Bot"
+        ],
+        "fitness": [
+            "Fit", "Health", "Strong", "Muscle", "Workout", "Training", "Exercise", 
+            "Power", "Athletic", "Energy", "Beast", "Strength", "Gains", "Wellness"
+        ],
+        "education": [
+            "Learn", "Study", "Teach", "Knowledge", "Academy", "School", "Education",
+            "Class", "Course", "Tutorial", "Lesson", "Training", "Skills"
+        ],
+        "business": [
+            "Business", "Success", "Entrepreneur", "Money", "Wealth", "Growth",
+            "Strategy", "Leader", "Expert", "Guru", "Mentor", "Coach"
+        ]
+    }
+    
+    # Convert niche to appropriate category
+    niche = niche.lower()
+    for category in niche_specific:
+        if category in niche:
+            specific_words = niche_specific[category]
+            break
+    else:
+        specific_words = [niche.capitalize()] * 5 + [w.capitalize() for w in niche.split()]
+    
+    suggestions = []
+    explanations = []
+    
+    # Generate 10 suggestions with more patterns
+    for i in range(10):
+        name_type = random.randint(1, 6)
         
-        stats = channel_data["items"][0]["statistics"]
-        snippet = channel_data["items"][0]["snippet"]
+        if name_type == 1:
+            # Pattern: The + [Niche] + Suffix
+            name = f"{random.choice(prefixes)} {random.choice(specific_words)} {random.choice(suffixes)}"
+            explanation = f"Combines professionalism with {niche} expertise"
         
-        channels.append({
-            "name": snippet["title"],
-            "description": snippet["description"][:100] + "...",
-            "subscribers": int(stats.get("subscriberCount", 0)),
-            "views": int(stats.get("viewCount", 0)),
-            "videos": int(stats.get("videoCount", 0))
-        })
-    return channels
-
-def suggest_channel_names_gemini(channels, niche):
-    """Generate channel name suggestions using AI."""
-    prompt = f"""
-    As a YouTube branding expert, analyze these top {niche} channels:
-    {channels}
+        elif name_type == 2:
+            # Pattern: [Niche]Pro/Master
+            name = f"{random.choice(specific_words)}{random.choice(['Pro', 'Master', 'Expert', 'Guru'])}"
+            explanation = f"Short and powerful name emphasizing {niche} expertise"
+        
+        elif name_type == 3:
+            # Pattern: Daily + [Niche] + Tips
+            name = f"{random.choice(['Daily', 'Weekly', 'Pro'])} {random.choice(specific_words)} {random.choice(['Tips', 'Guide', 'Hub'])}"
+            explanation = f"Emphasizes regular, valuable {niche} content"
+        
+        elif name_type == 4:
+            # Pattern: Creative + [Niche] + Zone
+            name = f"{random.choice(prefixes)} {random.choice(specific_words)} {random.choice(['Zone', 'Space', 'World'])}"
+            explanation = f"Creates a unique brand identity in the {niche} space"
+        
+        elif name_type == 5:
+            # Pattern: [Niche] + Academy/School/Lab
+            name = f"{random.choice(specific_words)} {random.choice(['Academy', 'School', 'Lab', 'Workshop'])}"
+            explanation = f"Positions your channel as an educational resource for {niche}"
+        
+        else:
+            # Pattern: Mr/Ms + [Niche]
+            name = f"{random.choice(['Mr', 'Ms', 'The'])} {random.choice(specific_words)} {random.choice(['TV', 'Show', 'Channel'])}"
+            explanation = f"Personal branding approach for {niche} content"
+        
+        suggestions.append(name)
+        explanations.append(explanation)
     
-    Create 5 unique channel name suggestions that:
-    1. Stand out in the {niche} niche
-    2. Are memorable and brandable
-    3. Reflect current YouTube trends
-    
-    For each suggestion, provide:
-    - The channel name
-    - A brief explanation of its appeal
-    - Why it would work well in this niche
-    
-    Format each suggestion clearly with emojis and bullet points.
-    """
-    
-    model = genai.GenerativeModel('gemini-pro')
-    try:
-        response = model.generate_content(prompt)
-        return response.text
-    except Exception as e:
-        raise Exception(f"❌ Oops! Something went wrong,tTry Again in Few Moment")
+    return suggestions, explanations
 
 # Main UI
 st.title("🎥 YouTube Channel Name Generator")
@@ -126,53 +146,31 @@ with container:
     with col2:
         niche = st.text_input(
             "What's your content niche?",
-            placeholder="e.g.,Cooking, Travel",
+            placeholder="e.g., Cooking, Gaming, Travel, Tech",
             help="Enter the main topic or theme of your YouTube channel"
         )
-        st.write("")  # Add some spacing
+        st.write("")
         if st.button("✨ Generate Ideas", use_container_width=True):
             if niche:
                 try:
-                    with st.spinner("🔍 Analyzing top channels in your niche..."):
-                        channels = search_channels(niche)
-                        suggestions = suggest_channel_names_gemini(channels, niche)
+                    with st.spinner("🔍 Generating creative channel names..."):
+                        suggestions, explanations = generate_channel_names(niche)
                         
-                        # Create two columns for results
-                        col_left, col_right = st.columns(2)
-                        
-                        # Left column: Top Channels
-                        with col_left:
-                            st.markdown("### 📊 Top Channels in Your Niche")
-                            for channel in channels:
-                                st.markdown(f"""
-                                <div class="metric-card">
-                                    <h4>{channel['name']}</h4>
-                                    <p><small>{channel['description']}</small></p>
-                                    <table>
-                                        <tr>
-                                            <td>👥 {channel['subscribers']:,} subscribers</td>
-                                            <td>👀 {channel['views']:,} views</td>
-                                            <td>🎥 {channel['videos']:,} videos</td>
-                                        </tr>
-                                    </table>
-                                </div>
-                                """, unsafe_allow_html=True)
-                        
-                        # Right column: Suggestions
-                        with col_right:
-                            st.markdown("### ✨ Suggested Channel Names")
+                        st.markdown("### ✨ Suggested Channel Names")
+                        for suggestion, explanation in zip(suggestions, explanations):
                             st.markdown(f"""
                             <div class="suggestion-card">
-                                {suggestions}
+                                <h3>🎯 {suggestion}</h3>
+                                <p>💡 {explanation}</p>
                             </div>
                             """, unsafe_allow_html=True)
                 
                 except Exception as e:
-                    st.error(f"❌ Oops! Something went wrong,tTry Again in Few Moment")
+                    st.error("❌ Oops! Something went wrong. Please try again.")
             else:
                 st.warning("🎯 Please enter your content niche to get started!")
 
-# Tips section at the bottom
+# Tips section
 with st.expander("📌 Tips for choosing your channel name"):
     st.markdown("""
     - Keep it memorable and easy to spell
@@ -180,6 +178,11 @@ with st.expander("📌 Tips for choosing your channel name"):
     - Check if the name is available across social media
     - Consider your long-term content strategy
     - Test the name with potential viewers
+    - Make sure it's easy to pronounce
+    - Keep it relevant to your content
+    - Consider your target audience
+    - Make it unique and brandable
+    - Avoid trendy terms that might date quickly
     """)
 
 # Footer
@@ -189,16 +192,15 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-
-
+# Hide links
 hide_links_style = """
-        <style>
-        a {
-            pointer-events: none;
-            cursor: default;
-            text-decoration: none;
-            color: inherit;
-        }
-        </style>
-        """
+    <style>
+    a {
+        pointer-events: none;
+        cursor: default;
+        text-decoration: none;
+        color: inherit;
+    }
+    </style>
+    """
 st.markdown(hide_links_style, unsafe_allow_html=True)
